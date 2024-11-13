@@ -1,0 +1,15 @@
+{
+  "originHash" : "382755c94ca42d544bee320efb1516ffef76624792bcdf8b8fdc76883b52e2c2",
+  "pins" : [
+    {
+      "identity" : "poker-swift-core",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Samasaur1/poker-swift-core",
+      "state" : {
+        "revision" : "6707fbf38762b1a18fd3fe689a5f543cf916872b",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
