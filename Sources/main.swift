@@ -1,56 +1,6 @@
 import Foundation
 import Poker
 
-private actor aQ<Element> {
-    private var arr: [Element] = []
-
-    func enqueue(_ e: Element) {
-        arr.append(e)
-    }
-
-    func dequeue() -> Element? {
-        if arr.isEmpty { return nil }
-        return arr.removeLast()
-    }
-}
-
-private class CCW<S,F: Error>: @unchecked Sendable {
-    var continuation: CheckedContinuation<S,F>? = nil
-
-    func set(_ new: CheckedContinuation<S,F>?) {
-        self.continuation = new
-    }
-    func get() -> CheckedContinuation<S,F>? {
-        return continuation
-    }
-}
-
-private actor aQW<Element: Sendable> {
-    private let q: aQ<Element>
-    // private var continuation: CheckedContinuation<Element, Never>? = nil
-    nonisolated private let continuation = CCW<Element, Never>()
-
-    init(_ q: aQ<Element>) { self.q = q }
-
-    func enqueue(_ e: Element) async {
-        if let c = continuation.get() {
-            c.resume(returning: e)
-            continuation.set(nil)
-        } else {
-            await q.enqueue(e)
-        }
-    }
-
-    nonisolated func dequeue() async -> Element {
-        if let e = await q.dequeue() {
-            return e
-        }
-        return await withCheckedContinuation { continuation in
-            self.continuation.set(continuation)
-        }
-    }
-}
-
 actor Subprocess {
     static let DEBUG = false
 
@@ -92,20 +42,6 @@ actor Subprocess {
         if Self.DEBUG {
             print("Subprocess: did launch")
         }
-
-        readingTask = Task {
-            for try await line in output.fileHandleForReading.bytes.lines {
-                if Self.DEBUG {
-                    print("Subprocess: got line in stdout task")
-                }
-                await self.outputQueue.enqueue(line)
-            }
-        }
-
-        // Task {
-        //     for try await line in error.fileHandleForReading.bytes.lines {
-        //     }
-        // }
     }
 
     func stop() {
@@ -122,9 +58,8 @@ actor Subprocess {
         if Self.DEBUG {
             print("Subprocess: will read line")
         }
-        return await outputQueue.dequeue()
-        // var it = output.fileHandleForReading.bytes.lines.makeAsyncIterator()
-        // return try await it.next()!
+        var it = output.fileHandleForReading.bytes.lines.makeAsyncIterator()
+        return try await it.next()!
     }
 
     func write(_ data: Data, addNewline: Bool = true) {
@@ -145,27 +80,7 @@ actor Subprocess {
     private let input: Pipe
     private let output: Pipe
     private let error: Pipe
-    private var readingTask: Task<(), any Error>? = nil
-    private var outputQueue = aQW<String>(aQ())
 }
-
-// let a = Subprocess(path: "/bin/cat")
-//
-// await a.start()
-// await a.write("Hello".data(using: .utf8)!)
-// let res = try await a.readNextLine()
-// print("got from cat: \(res)")
-//
-// await a.write("line 2".data(using: .utf8)!)
-// let res2 = try await a.readNextLine()
-// print("got from cat: \(res2)")
-//
-// Task {
-//     try await Task.sleep(nanoseconds: 3_000_000_000)
-//     await a.write("line 3".data(using: .utf8)!)
-// }
-// let res3 = try await a.readNextLine()
-// print("got from cat: \(res3)")
 
 actor Player {
     private static let DEBUG = false
@@ -222,28 +137,6 @@ for player in players {
     let action = try await player.doTurn(event: .init())
     print("Player \(player.id): \(action)")
 }
-
-// // MARK: set up CPUs
-//
-// var cpus: [(Process, Pipe, Pipe)] = []
-// for arg in CommandLine.arguments.dropFirst() {
-//     let url = URL(fileURLWithPath: arg)
-//
-//     let process = Process()
-//
-//     let inputPipe = Pipe()
-//     let outputPipe = Pipe()
-//
-//     process.executableURL = url
-//     process.standardInput = inputPipe
-//     process.standardOutput = outputPipe
-//
-//     cpus.append((process, inputPipe, outputPipe))
-// }
-//
-// print("Have \(cpus.count) CPU(s)")
-// cpus.forEach { $0.0.launch() }
-//
 //
 // // MARK: begin game
 //
